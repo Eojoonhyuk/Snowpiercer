@@ -2,8 +2,6 @@
 
 # Learning - TypeScript
 
-<span style="color:blue">
-
 안정적인 웹 프로젝트 운영을 위한 타입스크립트의 모든 것
 
 <br />
@@ -33,4 +31,16 @@
 | ~ 09. 08. |            구문 확장            |
 | ~ 09. 10. |            타입 운영            |
 
+<br />
+
+<img src="https://image.yes24.com/goods/89649360/XL" alt="리팩터링 2판" align="right" width="200" />
+
+# 리팩터링 2판
+
+코드 구조를 체계적으로 개선하여 효율적인 리팩터링 구현하기
+
+<br />
+<br />
+<br />
+<br />
 <br />
