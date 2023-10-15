@@ -44,3 +44,7 @@
 <br />
 <br />
 <br />
+
+# 모던 자바스크립트 Deep Dive
+
+<img src="https://image.yes24.com/goods/92742567/XL" alt="모던 자바스크립트" align="right" width="200" />
