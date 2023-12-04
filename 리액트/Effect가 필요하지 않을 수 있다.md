@@ -188,3 +188,141 @@ function List({ items }) {
   // ...
 }
 ```
+
+## state변경을 부모 컴포넌트에 알리기
+
+```js
+function Toggle({ onChange }) {
+  const [isOn, setIsOn] = useState(false);
+
+  // 🔴 Avoid: The onChange handler runs too late
+  // 🔴 이러지 마세요: onChange 핸들러가 너무 늦게 실행됨
+  useEffect(() => {
+    onChange(isOn);
+  }, [isOn, onChange]);
+
+  function handleClick() {
+    setIsOn(!isOn);
+  }
+
+  function handleDragEnd(e) {
+    if (isCloserToRightEdge(e)) {
+      setIsOn(true);
+    } else {
+      setIsOn(false);
+    }
+  }
+
+  // ...
+}
+```
+
+React는 서로 다른 컴포넌트에서 일괄 업데이트를 함께 처리하므로, 렌더링 과정은 한 번만 발생합니다.
+
+```js
+// ✅ Also good: the component is fully controlled by its parent
+// ✅ 좋습니다: 부모 컴포넌트에 의해 완전히 제어됨
+function Toggle({ isOn, onChange }) {
+  function handleClick() {
+    onChange(!isOn);
+  }
+
+  function handleDragEnd(e) {
+    if (isCloserToRightEdge(e)) {
+      onChange(true);
+    } else {
+      onChange(false);
+    }
+  }
+
+  // ...
+}
+```
+
+“state 끌어올리기”는 부모 컴포넌트가 부모 자체의 state를 토글하여 Toggle을 완전히 제어할 수 있게 해줍니다. 이는 부모 컴포넌트가 더 많은 로직을 포함해야 하지만, 전체적으로 걱정해야 할 state가 줄어든다는 것을 의미합니다.
+
+## 데이터 패칭하기
+
+```js
+function SearchResults({ query }) {
+  const [results, setResults] = useState([]);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    // 🔴 Avoid: Fetching without cleanup logic
+    // 🔴 이러지 마세요: 클린업 없이 fetch 수행
+    fetchResults(query, page).then((json) => {
+      setResults(json);
+    });
+  }, [query, page]);
+
+  function handleNextPageClick() {
+    setPage(page + 1);
+  }
+  // ...
+}
+```
+
+페치해야 하는 주된 이유가 타이핑 이벤트가 아니라는 점. 검색 입력은 URL에 미리 채워져 있는 경우가 많으며, 사용자는 input을 건드리지 않고도 앞뒤로 탐색할 수 있다.
+
+age와 query가 어디에서 오는지는 중요하지 않다. 이 컴포넌트가 표시되는 동안 현재의 page 및 query에 대한 네트워크의 데이터와 results의 동기화가 유지되면 된다. 이것이 Effect인 이유다.
+
+경쟁 조건을 수정하기 위해서는 오래된 응답을 무시하도록 클린업 함수를 추가해야 한다.
+
+```js
+function SearchResults({ query }) {
+  const [results, setResults] = useState([]);
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    let ignore = false;
+    fetchResults(query, page).then((json) => {
+      if (!ignore) {
+        setResults(json);
+      }
+    });
+    return () => {
+      ignore = true;
+    };
+  }, [query, page]);
+
+  function handleNextPageClick() {
+    setPage(page + 1);
+  }
+  // ...
+}
+```
+
+프레임워크를 사용하지 않고(또한 직접 만들고 싶지 않고) Effect에서 데이터 페칭을 보다 인체공학적으로 만들고 싶다면, 다음 예시처럼 페칭 로직을 커스텀 훅으로 추출하는 것을 고려해 보자.
+
+```js
+function SearchResults({ query }) {
+  const [page, setPage] = useState(1);
+  const params = new URLSearchParams({ query, page });
+  const results = useData(`/api/search?${params}`);
+
+  function handleNextPageClick() {
+    setPage(page + 1);
+  }
+  // ...
+}
+
+function useData(url) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    let ignore = false;
+    fetch(url)
+      .then((response) => response.json())
+      .then((json) => {
+        if (!ignore) {
+          setData(json);
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [url]);
+  return data;
+}
+```
+
+이 방법만으로는 프레임워크 빌트인 데이터 페칭 메커니즘을 사용하는 것만큼 효율적이지는 않겠지만, 데이터 페칭 로직을 커스텀 훅으로 옮기면 나중에 효율적인 데이터 페칭 전략을 채택하기가 더 쉬워진다.
